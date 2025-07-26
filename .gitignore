@@ -1,0 +1,48 @@
+# ---- General ----
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+*.sqlite3
+*.db
+*.db-journal
+*.swp
+.DS_Store
+Thumbs.db
+.env
+.env.*
+
+# ---- FastAPI (Python) Specific ----
+api/venv/
+api/__pycache__/
+api/.mypy_cache/
+api/.pytest_cache/
+api/*.pyc
+api/*.pyo
+api/*.pyd
+api/.env
+api/.env.*
+
+# ---- Flutter Specific ----
+client/.dart_tool/
+client/.idea/
+client/.packages
+client/.flutter-plugins
+client/.flutter-plugins-dependencies
+client/.metadata
+client/build/
+client/ios/Flutter/Flutter.framework/
+client/ios/Flutter/Flutter.podspec
+client/ios/.symlinks/
+client/ios/Pods/
+client/ios/Runner.xcworkspace/
+client/android/.gradle/
+client/android/app/build/
+client/android/local.properties
+client/pubspec.lock
+client/flutter_*.png
+client/*.iml
+
+# ---- VS Code ----
+.vscode/
