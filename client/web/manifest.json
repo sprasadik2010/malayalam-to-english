@@ -1,6 +1,6 @@
 {
-    "name": "client",
-    "short_name": "client",
+    "name": "flutter_malayalam_speech",
+    "short_name": "flutter_malayalam_speech",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

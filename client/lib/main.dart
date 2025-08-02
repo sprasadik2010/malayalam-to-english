@@ -1,109 +1,226 @@
-import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'dart:async';
+import 'dart:typed_data';
 import 'dart:convert';
-import 'package:share/share.dart'; // For sharing to WhatsApp or any app
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:google_speech/google_speech.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter_sound/flutter_sound.dart';
+import 'package:http/http.dart' as http; // <-- Added for API call
 
 void main() {
-  runApp(TranslatorApp());
+  runApp(SpeechApp());
 }
 
-class TranslatorApp extends StatelessWidget {
+class SpeechApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Malayalam to English Translator',
-      home: TranslatorHomePage(),
+      title: 'Malayalam Speech Recognition',
+      theme: ThemeData(primarySwatch: Colors.green),
+      home: SpeechHomePage(),
     );
   }
 }
 
-class TranslatorHomePage extends StatefulWidget {
+class SpeechHomePage extends StatefulWidget {
   @override
-  _TranslatorHomePageState createState() => _TranslatorHomePageState();
+  _SpeechHomePageState createState() => _SpeechHomePageState();
 }
 
-class _TranslatorHomePageState extends State<TranslatorHomePage> {
-  final TextEditingController _controller = TextEditingController();
-  String _translatedText = '';
-  bool _isLoading = false;
+class _SpeechHomePageState extends State<SpeechHomePage> {
+  final TextEditingController _textController = TextEditingController();
+  final TextEditingController _translatedController = TextEditingController(); // <-- Added
+  bool isListening = false;
 
-  Future<void> _translateText() async {
-    final text = _controller.text.trim();
-    if (text.isEmpty) return;
+  SpeechToText? speechToText;
+  StreamController<Uint8List>? audioStream;
+  FlutterSoundRecorder? recorder;
 
-    setState(() {
-      _isLoading = true;
-    });
+  @override
+  void initState() {
+    super.initState();
+    _initGoogleSpeech();
+  }
 
+  Future<void> _initGoogleSpeech() async {
     try {
-      final response = await http.post(
-        Uri.parse('http://192.168.1.100:8000/translate'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'text': text}),
+      var micStatus = await Permission.microphone.request();
+      if (!micStatus.isGranted) {
+        _updateTextBox('❌ Error: Microphone permission denied.');
+        return;
+      }
+
+      final serviceAccountJson =
+          await rootBundle.loadString('assets/credentials.json');
+
+      final serviceAccount = ServiceAccount.fromString(serviceAccountJson);
+
+      speechToText = SpeechToText.viaServiceAccount(serviceAccount);
+
+      recorder = FlutterSoundRecorder();
+      await recorder!.openRecorder();
+    } catch (e) {
+      _updateTextBox('❌ Initialization Error: $e');
+    }
+  }
+
+  RecognitionConfig getConfig() => RecognitionConfig(
+        encoding: AudioEncoding.LINEAR16,
+        sampleRateHertz: 16000,
+        languageCode: 'ml-IN',
+        model: RecognitionModel.basic,
       );
 
-      if (response.statusCode == 200) {
-        final jsonResponse = jsonDecode(response.body);
-        setState(() {
-          _translatedText = jsonResponse['translated_text'];
-        });
-      } else {
-        setState(() {
-          _translatedText = 'Translation failed.';
-        });
-      }
-    } catch (e) {
+  void _startListening() async {
+    if (speechToText == null || recorder == null) {
+      _updateTextBox('❌ Error: Speech service not initialized.');
+      return;
+    }
+
+    try {
+      audioStream = StreamController<Uint8List>();
       setState(() {
-        _translatedText = 'Error: $e';
+        isListening = true;
       });
-    } finally {
+      _updateTextBox('🎙️ Listening...');
+
+      final responseStream = speechToText!.streamingRecognize(
+        StreamingRecognitionConfig(
+          config: getConfig(),
+          interimResults: true,
+        ),
+        audioStream!.stream,
+      );
+
+      responseStream.listen((data) {
+        if (data.results.isNotEmpty) {
+          final result = data.results.first;
+          if (result.alternatives.isNotEmpty) {
+            final transcript = result.alternatives.first.transcript;
+            _updateTextBox(transcript.isNotEmpty
+                ? transcript
+                : '⚠️ No speech detected.');
+          }
+        } else {
+          _updateTextBox('⚠️ No speech detected.');
+        }
+      }, onError: (error) {
+        _updateTextBox('❌ Recognition Error: $error');
+      });
+
+      await recorder!.startRecorder(
+        toStream: audioStream!.sink,
+        codec: Codec.pcm16,
+        sampleRate: 16000,
+        numChannels: 1,
+        bitRate: 16000 * 2,
+      );
+    } catch (e) {
+      _updateTextBox('❌ Error starting recognition: $e');
       setState(() {
-        _isLoading = false;
+        isListening = false;
       });
     }
   }
 
-  void _shareTranslation() {
-    if (_translatedText.isNotEmpty) {
-      Share.share(_translatedText);
+  void _stopListening() async {
+    try {
+      await recorder?.stopRecorder();
+      await audioStream?.close();
+    } catch (e) {
+      _updateTextBox('❌ Error stopping recorder: $e');
     }
+    setState(() {
+      isListening = false;
+    });
+  }
+
+  void _updateTextBox(String text) {
+    setState(() {
+      _textController.text = text;
+    });
+  }
+
+  Future<void> _translateText() async {
+    final malayalamText = _textController.text.trim();
+    if (malayalamText.isEmpty) {
+      _translatedController.text = '⚠️ No Malayalam text to translate.';
+      return;
+    }
+
+    try {
+      final response = await http.post(
+        Uri.parse('https://malayalam-to-english.onrender.com/translate'),
+        headers: {
+          'accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'text': malayalamText}),
+      );
+
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body);
+        final translated = jsonResponse['translated_text'] ?? 'No translation';
+        setState(() {
+          _translatedController.text = translated;
+        });
+      } else {
+        _translatedController.text =
+            '❌ API Error: ${response.statusCode} ${response.reasonPhrase}';
+      }
+    } catch (e) {
+      _translatedController.text = '❌ Translation Error: $e';
+    }
+  }
+
+  @override
+  void dispose() {
+    recorder?.closeRecorder();
+    _textController.dispose();
+    _translatedController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Malayalam to English')),
+      appBar: AppBar(title: Text("Speak Malayalam")),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
             TextField(
-              controller: _controller,
-              maxLines: 3,
+              controller: _textController,
+              readOnly: true,
+              maxLines: null,
               decoration: InputDecoration(
+                labelText: 'Recognized Text or Error',
                 border: OutlineInputBorder(),
-                labelText: 'Enter Malayalam text',
               ),
             ),
-            SizedBox(height: 12),
-            ElevatedButton(
-              onPressed: _isLoading ? null : _translateText,
-              child: Text('Translate'),
+            SizedBox(height: 20),
+            ElevatedButton.icon(
+              icon: Icon(isListening ? Icons.stop : Icons.mic),
+              label: Text(isListening ? 'Stop Listening' : 'Start Listening'),
+              onPressed: isListening ? _stopListening : _startListening,
             ),
             SizedBox(height: 20),
-            _isLoading
-                ? CircularProgressIndicator()
-                : Text(
-                    _translatedText,
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
+            ElevatedButton.icon(
+              icon: Icon(Icons.translate),
+              label: Text('Translate'),
+              onPressed: _translateText,
+            ),
             SizedBox(height: 20),
-            if (_translatedText.isNotEmpty)
-              ElevatedButton.icon(
-                onPressed: _shareTranslation,
-                icon: Icon(Icons.share),
-                label: Text('Share to WhatsApp'),
+            TextField(
+              controller: _translatedController,
+              readOnly: true,
+              maxLines: null,
+              decoration: InputDecoration(
+                labelText: 'Translated English Text',
+                border: OutlineInputBorder(),
               ),
+            ),
           ],
         ),
       ),

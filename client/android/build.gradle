@@ -1,0 +1,26 @@
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+// Set custom build directory for root project
+def newBuildDir = rootProject.layout.buildDirectory.dir("../../build").get()
+rootProject.layout.buildDirectory.set(newBuildDir)
+
+// Set custom build directory for each subproject
+subprojects {
+    def newSubprojectBuildDir = newBuildDir.dir(project.name)
+    project.layout.buildDirectory.set(newSubprojectBuildDir)
+}
+
+// Ensure app project is evaluated before other subprojects
+subprojects {
+    project.evaluationDependsOn(":app")
+}
+
+// Register clean task
+tasks.register("clean", Delete) {
+    delete(rootProject.layout.buildDirectory)
+}
