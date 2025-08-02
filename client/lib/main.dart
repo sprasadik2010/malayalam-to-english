@@ -6,7 +6,9 @@ import 'package:flutter/services.dart';
 import 'package:google_speech/google_speech.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_sound/flutter_sound.dart';
-import 'package:http/http.dart' as http; // <-- Added for API call
+import 'package:http/http.dart' as http;
+import 'package:share_plus/share_plus.dart'; // WhatsApp share
+import 'package:html_unescape/html_unescape.dart'; // HTML decode
 
 void main() {
   runApp(SpeechApp());
@@ -30,7 +32,7 @@ class SpeechHomePage extends StatefulWidget {
 
 class _SpeechHomePageState extends State<SpeechHomePage> {
   final TextEditingController _textController = TextEditingController();
-  final TextEditingController _translatedController = TextEditingController(); // <-- Added
+  final TextEditingController _translatedController = TextEditingController();
   bool isListening = false;
 
   SpeechToText? speechToText;
@@ -174,6 +176,27 @@ class _SpeechHomePageState extends State<SpeechHomePage> {
     }
   }
 
+  void _shareToWhatsApp() async {
+    final rawText = _translatedController.text.trim();
+    if (rawText.isEmpty || rawText.startsWith('⚠️') || rawText.startsWith('❌')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('⚠️ Nothing to share. Please translate first.')),
+      );
+      return;
+    }
+
+    final unescape = HtmlUnescape();
+    final decodedText = unescape.convert(rawText); // Decode HTML entities
+
+    try {
+      await Share.share(decodedText);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ Error sharing to WhatsApp: $e')),
+      );
+    }
+  }
+
   @override
   void dispose() {
     recorder?.closeRecorder();
@@ -188,40 +211,53 @@ class _SpeechHomePageState extends State<SpeechHomePage> {
       appBar: AppBar(title: Text("Speak Malayalam")),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            TextField(
-              controller: _textController,
-              readOnly: true,
-              maxLines: null,
-              decoration: InputDecoration(
-                labelText: 'Recognized Text or Error',
-                border: OutlineInputBorder(),
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              TextField(
+                controller: _textController,
+                readOnly: true,
+                maxLines: null,
+                decoration: InputDecoration(
+                  labelText: 'Recognized Text',
+                  border: OutlineInputBorder(),
+                ),
               ),
-            ),
-            SizedBox(height: 20),
-            ElevatedButton.icon(
-              icon: Icon(isListening ? Icons.stop : Icons.mic),
-              label: Text(isListening ? 'Stop Listening' : 'Start Listening'),
-              onPressed: isListening ? _stopListening : _startListening,
-            ),
-            SizedBox(height: 20),
-            ElevatedButton.icon(
-              icon: Icon(Icons.translate),
-              label: Text('Translate'),
-              onPressed: _translateText,
-            ),
-            SizedBox(height: 20),
-            TextField(
-              controller: _translatedController,
-              readOnly: true,
-              maxLines: null,
-              decoration: InputDecoration(
-                labelText: 'Translated English Text',
-                border: OutlineInputBorder(),
+              SizedBox(height: 20),
+              ElevatedButton.icon(
+                icon: Icon(isListening ? Icons.stop : Icons.mic),
+                label:
+                    Text(isListening ? 'Stop Listening' : 'Start Listening'),
+                onPressed: isListening ? _stopListening : _startListening,
               ),
-            ),
-          ],
+              SizedBox(height: 20),
+              ElevatedButton.icon(
+                icon: Icon(Icons.translate),
+                label: Text('Translate'),
+                onPressed: _translateText,
+              ),
+              SizedBox(height: 20),
+              TextField(
+                controller: _translatedController,
+                readOnly: true,
+                maxLines: null,
+                decoration: InputDecoration(
+                  labelText: 'Translated English Text',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              SizedBox(height: 20),
+              ElevatedButton.icon(
+                icon: Icon(Icons.share),
+                label: Text('Share to WhatsApp'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: _shareToWhatsApp,
+              ),
+            ],
+          ),
         ),
       ),
     );
