@@ -23,6 +23,7 @@ api/*.pyo
 api/*.pyd
 api/.env
 api/.env.*
+api/assets/credential.json
 
 # ---- Flutter Specific ----
 client/.dart_tool/
