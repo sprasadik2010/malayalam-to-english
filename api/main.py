@@ -6,13 +6,21 @@ app = FastAPI()
 
 class TranslationRequest(BaseModel):
     text: str
-    source: str = "en"
-    target: str = "ml"
+    source: str = "ml"
+    target: str = "en"
 
 @app.post("/translate")
 async def translate_text(req: TranslationRequest):
     try:
         translated = GoogleTranslator(source=req.source, target=req.target).translate(req.text)
         return {"translatedText": translated}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/awake")
+async def awake_sever():
+    try:
+        return {"status": 'awaked'}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
