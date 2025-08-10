@@ -2,17 +2,27 @@ name: flutter_malayalam_speech
 description: Malayalam Speech Recognition with Google Speech-to-Text
 publish_to: 'none'
 
+version: 1.0.1+8
+
 environment:
   sdk: ">=3.0.0 <4.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
-  google_speech: ^5.3.0
+  # google_speech: ^5.3.0
   permission_handler: ^11.0.1
   flutter_sound: ^9.3.7
   share_plus: ^8.0.2
   html_unescape: ^2.0.0
+  flutter_launcher_icons: ^0.13.1
+  # vosk_flutter_2: ^1.0.5
+  http: ^1.2.1
+
+flutter_launcher_icons:
+  android: true
+  ios: false  # true if you target iOS too
+  image_path: "assets/icon/mal-eng-icon.png"
 
 flutter:
   uses-material-design: true
