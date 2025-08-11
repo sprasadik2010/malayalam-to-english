@@ -18,9 +18,6 @@ async def translate_text(req: TranslationRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/awake")
-async def awake_sever():
-    try:
-        return {"status": 'awaked'}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+@app.get("/awake")
+async def awake_server():
+    return {"status": "awaked"}

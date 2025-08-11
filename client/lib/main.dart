@@ -45,29 +45,29 @@ class _SpeechHomePageState extends State<SpeechHomePage> {
   @override
   void initState() {
     super.initState();
-    _initGoogleSpeech();
+    // _initGoogleSpeech();
   }
 
-  Future<void> _initGoogleSpeech() async {
-    try {
-      var micStatus = await Permission.microphone.request();
-      if (!micStatus.isGranted) {
-        _updateTextBox('❌ Error: Microphone permission denied.');
-        return;
-      }
+  // Future<void> _initGoogleSpeech() async {
+  //   try {
+  //     var micStatus = await Permission.microphone.request();
+  //     if (!micStatus.isGranted) {
+  //       _updateTextBox('❌ Error: Microphone permission denied.');
+  //       return;
+  //     }
 
-      // final serviceAccountJson =
-      //     await rootBundle.loadString('assets/credentials.json');
-      // final serviceAccount = ServiceAccount.fromString(serviceAccountJson);
+  //     final serviceAccountJson =
+  //         await rootBundle.loadString('assets/credentials.json');
+  //     final serviceAccount = ServiceAccount.fromString(serviceAccountJson);
 
-      // speechToText = SpeechToText.viaServiceAccount(serviceAccount);
+  //     speechToText = SpeechToText.viaServiceAccount(serviceAccount);
 
-      recorder = FlutterSoundRecorder();
-      await recorder!.openRecorder();
-    } catch (e) {
-      _updateTextBox('❌ Initialization Error: $e');
-    }
-  }
+  //     recorder = FlutterSoundRecorder();
+  //     await recorder!.openRecorder();
+  //   } catch (e) {
+  //     _updateTextBox('❌ Initialization Error: $e');
+  //   }
+  // }
 
   // RecognitionConfig getConfig() => RecognitionConfig(
   //       encoding: AudioEncoding.LINEAR16,
@@ -167,15 +167,14 @@ class _SpeechHomePageState extends State<SpeechHomePage> {
 
   try {
     final response = await http.post(
-      Uri.parse('https://libretranslate.com/translate'),
+      Uri.parse('https://malayalam-to-english.onrender.com/translate'),
       headers: {
         'Content-Type': 'application/json',
       },
       body: jsonEncode({
-        'q': malayalamText,
+        'text': malayalamText,
         'source': 'ml',
-        'target': 'en',
-        'format': 'text',
+        'target': 'en'
       }),
     );
 

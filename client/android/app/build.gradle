@@ -29,7 +29,7 @@ android {
     defaultConfig {
         applicationId 'com.flutter_malayalam_speech'
         minSdk 24
-        targetSdk flutter.targetSdkVersion
+        targetSdk 24
         versionCode flutter.versionCode
         versionName flutter.versionName
     }
